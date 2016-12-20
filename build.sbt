@@ -13,7 +13,7 @@ libraryDependencies ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.13.3" % "test" // prop tests
 )
 
-mainClass in assembly := Some("io.asuna.totsuki.Main")
+mainClass in assembly := Some("io.asuna.jibril.Main")
 
 assemblyMergeStrategy in assembly := {
   case x if x.endsWith("io.netty.versions.properties") => MergeStrategy.first
