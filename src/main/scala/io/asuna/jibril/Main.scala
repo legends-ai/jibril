@@ -10,7 +10,7 @@ import io.asuna.proto.bacchus.BacchusData.RawMatch
 import io.asuna.proto.match_filters.MatchFilters
 import io.asuna.asunasan.legends.MatchSumHelpers._
 import java.io.{ PipedInputStream, PipedOutputStream }
-import org.xerial.snappy.SnappyInputStream
+import org.xerial.snappy.{ SnappyInputStream, SnappyOutputStream }
 import scala.concurrent.{ ExecutionContext, Future }
 
 
@@ -68,11 +68,15 @@ object Main {
     filterFutures.combineAll
   }
 
+  /**
+    * Consolidates the Totsuki fragments into one large Snappy-compressed protolist.
+    */
   def consolidateS3(cfg: Config, paths: List[String])(implicit ec: ExecutionContext): Future[Unit] = {
     val s3 = new AmazonS3Client()
 
     val is = new PipedInputStream()
-    val os = new PipedOutputStream(is)
+    val rawOs = new PipedOutputStream(is)
+    val os = new SnappyOutputStream(rawOs)
 
     val writeToS3 = Future {
       val fileName = s"${cfg.region}/${cfg.version}/${System.currentTimeMillis()}.protolist.snappy"
@@ -92,6 +96,7 @@ object Main {
     // Close the streams when we are done
     val readFromS3 = readers.sequence.map { _ =>
       os.close()
+      rawOs.close()
       is.close()
     }
 
