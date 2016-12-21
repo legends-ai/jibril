@@ -5,7 +5,7 @@ scalaVersion := "2.11.8"
 scalaVersion in ThisBuild := "2.11.8"
 
 libraryDependencies ++= Seq(
-  "io.asuna" %% "asunasan" % "0.3.5",
+  "io.asuna" %% "asunasan" % "0.6.0",
 
   // Scalatest
   "org.scalactic" %% "scalactic" % "3.0.0" % "test",
@@ -61,3 +61,10 @@ imageNames in docker := Seq(
   ImageName(s"${base}/${name.value}:latest"),
   ImageName(s"${base}/${name.value}:${version.value}")
 )
+
+lazy val root = (project in file(".")).
+  enablePlugins(BuildInfoPlugin).
+  settings(
+    buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion),
+    buildInfoPackage := "buildinfo"
+  )
