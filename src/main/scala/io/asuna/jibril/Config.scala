@@ -35,10 +35,10 @@ object Config {
       .valueName("<bucket>")
       .action((x, c) => c.copy(lockBucket = x))
 
-    opt[String]("matches")
+    opt[String]("matches_bucket")
       .text("The S3 bucket containing our final matches.")
       .valueName("<bucket>")
-      .action((x, c) => c.copy(lockBucket = x))
+      .action((x, c) => c.copy(matchesBucket = x))
 
     opt[String]("sums_keyspace")
       .text("The keyspace containing the sums tables.")
