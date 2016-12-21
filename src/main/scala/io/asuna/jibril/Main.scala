@@ -11,7 +11,9 @@ import io.asuna.proto.match_filters.MatchFilters
 import io.asuna.asunasan.legends.MatchSumHelpers._
 import java.io.{ PipedInputStream, PipedOutputStream }
 import org.xerial.snappy.{ SnappyInputStream, SnappyOutputStream }
-import scala.concurrent.{ ExecutionContext, Future }
+import scala.concurrent.duration.Duration
+import scala.concurrent.{ Await, ExecutionContext, Future }
+import scala.util.Try
 
 
 object Main {
@@ -27,13 +29,26 @@ object Main {
         println("The lock doesn't exist.")
         sys.exit(1)
       }
-      case Some(lock) => run(cfg, lock)
+      case Some(lock) => run(cfg, locks, lock)
     }
   }
 
-  def run(cfg: Config, lock: AthenaLock) = {
+  def run(cfg: Config, locks: AthenaLockManager, lock: AthenaLock) = {
     implicit val ec = ExecutionContext.global
-    mergeSums(cfg, lock.filters.toList)
+    val mergeAndConsolidate = Apply[Future].tuple2(
+      mergeSums(cfg, lock.filters.toList),
+      consolidateS3(cfg, lock.paths.toList)
+    )
+
+    val runEverything = for {
+      (mergeCount, consolidateCount) <- mergeAndConsolidate
+    } yield for {
+      _ <- locks.delete()
+    } yield {
+      println(s"Jibril completed, merging ${mergeCount} match sums and consolidating ${consolidateCount} RawMatches over ${lock.paths.size} protolists.")
+    }
+
+    Await.result(runEverything, Duration.Inf)
   }
 
   /**
@@ -71,7 +86,7 @@ object Main {
   /**
     * Consolidates the Totsuki fragments into one large Snappy-compressed protolist.
     */
-  def consolidateS3(cfg: Config, paths: List[String])(implicit ec: ExecutionContext): Future[Unit] = {
+  def consolidateS3(cfg: Config, paths: List[String])(implicit ec: ExecutionContext): Future[Int] = {
     val s3 = new AmazonS3Client()
 
     val is = new PipedInputStream()
@@ -85,30 +100,35 @@ object Main {
 
     val readers = paths.map { path =>
       Future {
-        val obj = s3.getObject(cfg.fragmentsBucket, path)
-        val is = new SnappyInputStream(obj.getObjectContent)
-        RawMatch.streamFromDelimitedInput(is).map { rawMatch =>
-          rawMatch.writeDelimitedTo(os)
-        }
+        Try {
+          val obj = s3.getObject(cfg.fragmentsBucket, path)
+          val is = new SnappyInputStream(obj.getObjectContent)
+          RawMatch.streamFromDelimitedInput(is).map { rawMatch =>
+            rawMatch.writeDelimitedTo(os)
+          }.size
+        }.toOption.getOrElse(0)
       }
     }
 
     // Close the streams when we are done
-    val readFromS3 = readers.sequence.map { _ =>
+    val readFromS3 = readers.combineAll.map { count =>
       os.close()
       rawOs.close()
       is.close()
+      count
     }
 
-    // Both write and read should finish
-    Apply[Future].tuple2(writeToS3, readFromS3).flatMap { _ =>
+    for {
+      // Both write and read should finish
+      (_, count) <- Apply[Future].tuple2(writeToS3, readFromS3)
+
       // Then we delete the fragments.
-      paths.map { path =>
+      _ <- paths.map { path =>
         Future {
           s3.deleteObject(cfg.fragmentsBucket, path)
         }
       }.sequence
-    }.map { _ => () }
+    } yield count
   }
 
 }
