@@ -102,8 +102,7 @@ object Main {
       Future {
         Try {
           val obj = s3.getObject(cfg.fragmentsBucket, path)
-          val is = new SnappyInputStream(obj.getObjectContent)
-          RawMatch.streamFromDelimitedInput(is).map { rawMatch =>
+          RawMatch.streamFromDelimitedInput(obj.getObjectContent).map { rawMatch =>
             rawMatch.writeDelimitedTo(os)
           }.size
         }.toOption.getOrElse(0)
