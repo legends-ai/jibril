@@ -8,6 +8,7 @@ case class Config(
   version: String = "",
   lockBucket: String = "athena_locks",
   matchesBucket: String = "matches",
+  fragmentsBucket: String = "totsuki_fragments",
   sumsKeyspace: String = "match_sums",
   partialSumsTable: String = "partial_sums",
   fullSumsTable: String = "match_sums",
@@ -39,6 +40,11 @@ object Config {
       .text("The S3 bucket containing our final matches.")
       .valueName("<bucket>")
       .action((x, c) => c.copy(matchesBucket = x))
+
+    opt[String]("fragments_bucket")
+      .text("The S3 bucket containing the Totsuki fragments.")
+      .valueName("<bucket>")
+      .action((x, c) => c.copy(fragmentsBucket = x))
 
     opt[String]("sums_keyspace")
       .text("The keyspace containing the sums tables.")

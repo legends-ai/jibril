@@ -81,7 +81,7 @@ object Main {
 
     val readers = paths.map { path =>
       Future {
-        val obj = s3.getObject(cfg.lockBucket, path)
+        val obj = s3.getObject(cfg.fragmentsBucket, path)
         val is = new SnappyInputStream(obj.getObjectContent)
         RawMatch.streamFromDelimitedInput(is).map { rawMatch =>
           rawMatch.writeDelimitedTo(os)
@@ -95,8 +95,15 @@ object Main {
       is.close()
     }
 
-    // Both write and read should finish at the same time
-    Apply[Future].tuple2(writeToS3, readFromS3).map { _ => () }
+    // Both write and read should finish
+    Apply[Future].tuple2(writeToS3, readFromS3).flatMap { _ =>
+      // Then we delete the fragments.
+      paths.map { path =>
+        Future {
+          s3.deleteObject(cfg.fragmentsBucket, path)
+        }
+      }.sequence
+    }.map { _ => () }
   }
 
 }
