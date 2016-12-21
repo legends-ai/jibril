@@ -10,7 +10,8 @@ case class Config(
   matchesBucket: String = "matches",
   sumsKeyspace: String = "match_sums",
   partialSumsTable: String = "partial_sums",
-  fullSumsTable: String = "match_sums"
+  fullSumsTable: String = "match_sums",
+  cassandraHosts: Seq[String] = Seq("localhost")
 )
 
 object Config {
@@ -54,6 +55,9 @@ object Config {
       .valueName("<table>")
       .action((x, c) => c.copy(fullSumsTable = x))
 
+    opt[Seq[String]]("cassandra_hosts").valueName("<node1>,<node2>...<node_n>")
+      .action((x, c) => c.copy(cassandraHosts = x))
+      .text("List of Cassandra hosts to connect to.")
   }
 
   def mustParse(args: Array[String]): Config = {

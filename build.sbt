@@ -5,7 +5,8 @@ scalaVersion := "2.11.8"
 scalaVersion in ThisBuild := "2.11.8"
 
 libraryDependencies ++= Seq(
-  "io.asuna" %% "asunasan" % "0.6.0",
+  "io.asuna" %% "asunasan" % "0.7.1",
+  "com.websudos" %%  "phantom-dsl" % "1.29.5",  // cassandra
 
   // Scalatest
   "org.scalactic" %% "scalactic" % "3.0.0" % "test",
