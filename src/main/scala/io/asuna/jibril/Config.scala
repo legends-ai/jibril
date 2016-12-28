@@ -1,11 +1,10 @@
 package io.asuna.jibril
 
 import buildinfo.BuildInfo
-import scopt.OptionParser
+import io.asuna.asunasan.ConfigParser
+import io.asuna.asunasan.AsunaServiceType
 
-case class Config(
-  region: String = "na",
-  version: String = "",
+case class JibrilConfig(
   lockBucket: String = "athena_locks",
   matchesBucket: String = "matches",
   fragmentsBucket: String = "totsuki_fragments",
@@ -15,64 +14,44 @@ case class Config(
   cassandraHosts: Seq[String] = Seq("localhost")
 )
 
-object Config {
-
-  val parser = new OptionParser[Config](BuildInfo.name) {
-
-    head(BuildInfo.name, BuildInfo.version)
-
-    opt[String]("region")
-      .text("The region we're reading matches from. Note: this is not the S3 region. Defaults to `na`.")
-      .valueName("<na|euw|eune|...>")
-      .action((x, c) => c.copy(region = x))
-
-    opt[String]("version")
-      .text("The match version we want to read, e.g. 6.22.1.")
-      .valueName("<version>")
-      .action((x, c) => c.copy(version = x)).required()
-
+object JibrilConfigParser extends ConfigParser[JibrilConfig](
+  myService = AsunaServiceType.Jibril,
+  version = BuildInfo.version,
+  port = 30493,
+  healthPort = 30494,
+  initial = JibrilConfig()
+) {
     opt[String]("lock_bucket")
       .text("The name of the S3 bucket we are reading/writing lock files from. Defaults to `athena_locks`.")
       .valueName("<bucket>")
-      .action((x, c) => c.copy(lockBucket = x))
+      .action((x, c) => c.copy(service = c.service.copy(lockBucket = x)))
 
     opt[String]("matches_bucket")
       .text("The S3 bucket containing our final matches.")
       .valueName("<bucket>")
-      .action((x, c) => c.copy(matchesBucket = x))
+      .action((x, c) => c.copy(service = c.service.copy(matchesBucket = x)))
 
     opt[String]("fragments_bucket")
       .text("The S3 bucket containing the Totsuki fragments.")
       .valueName("<bucket>")
-      .action((x, c) => c.copy(fragmentsBucket = x))
+      .action((x, c) => c.copy(service = c.service.copy(fragmentsBucket = x)))
 
     opt[String]("sums_keyspace")
       .text("The keyspace containing the sums tables.")
       .valueName("<keyspace>")
-      .action((x, c) => c.copy(sumsKeyspace = x))
+      .action((x, c) => c.copy(service = c.service.copy(sumsKeyspace = x)))
 
     opt[String]("partial_sums_table")
       .text("The output Cassandra table of Athena.")
       .valueName("<table>")
-      .action((x, c) => c.copy(partialSumsTable = x))
+      .action((x, c) => c.copy(service = c.service.copy(partialSumsTable = x)))
 
     opt[String]("full_sums_table")
       .text("The table containing full sums.")
       .valueName("<table>")
-      .action((x, c) => c.copy(fullSumsTable = x))
+      .action((x, c) => c.copy(service = c.service.copy(fullSumsTable = x)))
 
     opt[Seq[String]]("cassandra_hosts").valueName("<node1>,<node2>...<node_n>")
-      .action((x, c) => c.copy(cassandraHosts = x))
+      .action((x, c) => c.copy(service = c.service.copy(cassandraHosts = x)))
       .text("List of Cassandra hosts to connect to.")
-  }
-
-  def mustParse(args: Array[String]): Config = {
-    val result = parser.parse(args, Config())
-    if (!result.isDefined) {
-      // couldn't parse
-      sys.exit(0)
-    }
-    result.get
-  }
-
 }
