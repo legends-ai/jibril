@@ -1,5 +1,7 @@
 package io.asuna.jibril
 
+import java.io.{ File, FileOutputStream }
+import com.amazonaws.services.s3.transfer.TransferManager
 import io.asuna.proto.enums.Region
 import com.amazonaws.services.s3.AmazonS3Client
 import com.amazonaws.services.s3.model.ObjectMetadata
@@ -93,38 +95,34 @@ class JibrilServer(args: Seq[String])(implicit ec: ExecutionContext)
     */
   def consolidateS3(cfg: JibrilConfig, region: Region, version: String, paths: List[String])(implicit ec: ExecutionContext): Future[Int] = {
     val s3 = new AmazonS3Client()
+    val file = File.createTempFile(s"totsuki-${System.currentTimeMillis}", ".tmp")
+    val fs = new FileOutputStream(file)
+    val snappy = new SnappyOutputStream(fs)
 
-    val is = new PipedInputStream()
-    val rawOs = new PipedOutputStream(is)
-    val os = new SnappyOutputStream(rawOs)
-
-    val writeToS3 = Future {
-      val fileName = s"${region.name}/${version}/${System.currentTimeMillis()}.protolist.snappy"
-      s3.putObject(cfg.matchesBucket, fileName, is, new ObjectMetadata())
-    }
-
-    val readers = paths.map { path =>
+    val writers = paths.map { path =>
       Future {
         Try {
           val obj = s3.getObject(cfg.fragmentsBucket, path)
           RawMatch.streamFromDelimitedInput(obj.getObjectContent).map { rawMatch =>
-            rawMatch.writeDelimitedTo(os)
+            rawMatch.writeDelimitedTo(fs)
           }.size
         }.toOption.getOrElse(0)
       }
     }
 
-    // Close the streams when we are done
-    val readFromS3 = readers.combineAll.map { count =>
-      os.close()
-      rawOs.close()
-      is.close()
-      count
-    }
 
     for {
-      // Both write and read should finish
-      (_, count) <- Apply[Future].tuple2(writeToS3, readFromS3)
+      // First, let's write all of the matches.
+      count <- writers.combineAll
+
+      // Here we upload the temp file to S3.
+      // TransferManager will automatically make this multipart if it will improve performance.
+      _ <- Future {
+        val tx = new TransferManager()
+        val fileName = s"${region.name}/${version}/${System.currentTimeMillis()}.protolist.snappy"
+        tx.upload(cfg.matchesBucket, fileName, file).waitForCompletion()
+        fs.close()
+      }
 
       // Then we delete the fragments.
       _ <- paths.map { path =>
@@ -132,6 +130,17 @@ class JibrilServer(args: Seq[String])(implicit ec: ExecutionContext)
           s3.deleteObject(cfg.fragmentsBucket, path)
         }
       }.sequence
+
+      // Finally, we delete the temp file.
+      _ <- Future {
+        // Now we delete the tempfile since the S3 upload is complete
+        file.delete()
+        snappy.close()
+        fs.close()
+        file.delete
+      }
+
+    // We return the number of files aggregated.
     } yield count
   }
 
