@@ -5,7 +5,7 @@ scalaVersion := "2.11.8"
 scalaVersion in ThisBuild := "2.11.8"
 
 libraryDependencies ++= Seq(
-  "io.asuna" %% "asunasan" % "0.7.7",
+  "io.asuna" %% "asunasan" % "0.9.2",
   "com.websudos" %%  "phantom-dsl" % "1.29.5",
   "org.xerial.snappy" % "snappy-java" % "1.1.2.1",
 

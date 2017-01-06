@@ -2,7 +2,6 @@ package io.asuna.jibril
 
 import buildinfo.BuildInfo
 import io.asuna.asunasan.ConfigParser
-import io.asuna.asunasan.AsunaServiceType
 
 case class JibrilConfig(
   lockBucket: String = "athena_locks",
@@ -15,7 +14,7 @@ case class JibrilConfig(
 )
 
 object JibrilConfigParser extends ConfigParser[JibrilConfig](
-  myService = AsunaServiceType.Jibril,
+  myService = BuildInfo.name,
   version = BuildInfo.version,
   port = 30493,
   healthPort = 30494,

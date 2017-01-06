@@ -23,9 +23,7 @@ import io.asuna.proto.service_jibril.JibrilRpc
 import scala.concurrent.{ ExecutionContext, Future }
 
 class JibrilServer(args: Seq[String])(implicit ec: ExecutionContext)
-    extends BaseService(args, JibrilConfigParser) with JibrilGrpc.Jibril {
-
-  override val serviceDefinition = JibrilGrpc.bindService(this, implicitly[ExecutionContext])
+    extends BaseService(args, JibrilConfigParser, JibrilGrpc.bindService) with JibrilGrpc.Jibril {
 
   override def consolidate(req: JibrilRpc.Sector): Future[JibrilRpc.ConsolidateResponse] = {
     // Check for the precondition that the lock exists.
