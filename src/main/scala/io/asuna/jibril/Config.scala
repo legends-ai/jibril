@@ -6,8 +6,8 @@ import io.asuna.asunasan.AsunaServiceType
 
 case class JibrilConfig(
   lockBucket: String = "athena_locks",
-  matchesBucket: String = "matches",
-  fragmentsBucket: String = "totsuki_fragments",
+  matchesBucket: String = "matches-dev",
+  fragmentsBucket: String = "totsuki-fragments-dev",
   sumsKeyspace: String = "match_sums_dev",
   partialSumsTable: String = "partial_sums",
   fullSumsTable: String = "match_sums",
