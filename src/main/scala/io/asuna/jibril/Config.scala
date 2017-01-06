@@ -8,7 +8,7 @@ case class JibrilConfig(
   lockBucket: String = "athena_locks",
   matchesBucket: String = "matches",
   fragmentsBucket: String = "totsuki_fragments",
-  sumsKeyspace: String = "match_sums",
+  sumsKeyspace: String = "match_sums_dev",
   partialSumsTable: String = "partial_sums",
   fullSumsTable: String = "match_sums",
   cassandraHosts: Seq[String] = Seq("localhost")
